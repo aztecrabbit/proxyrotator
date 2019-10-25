@@ -12,7 +12,10 @@ class proxyrotator(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
     def serve_forever(self):
         while not self.stopped:
-            self.handle_request()
+            try:
+                self.handle_request()
+            except ValueError:
+                pass
 
     def stop(self):
         try:
@@ -20,6 +23,8 @@ class proxyrotator(socketserver.ThreadingMixIn, socketserver.TCPServer):
             self.stopped == True
             requests.head('http://127.0.0.1', proxies={'http': 'socks5://aztecrabbit:aztecrabbit@{}:{}'.format(*self.server_address)}, timeout=1)
         except requests.exceptions.ConnectTimeout:
+            pass
+        except requests.exceptions.ConnectionError:
             pass
 
 class proxyrotator_handler(socketserver.StreamRequestHandler):
@@ -128,10 +133,10 @@ class proxyrotator_handler(socketserver.StreamRequestHandler):
         i = 0
         while i < len(self.server.proxies):
             i += 1
-            with self.server.liblog.lock:
-                proxy = self.server.proxies.pop(0)
-                self.server.proxies.append(proxy)
             try:
+                with self.server.liblog.lock:
+                    proxy = self.server.proxies.pop(0)
+                    self.server.proxies.append(proxy)
                 if cmd == 1:
                     self.socket_server = socks.socksocket()
                     self.socket_server.set_proxy(socks.SOCKS5, str(proxy[0]), int(proxy[1]), rdns=True)
@@ -147,6 +152,8 @@ class proxyrotator_handler(socketserver.StreamRequestHandler):
                 pass
             except socks.ProxyConnectionError:
                 pass
+            except IndexError:
+                break
             else: break
 
         self.connection.sendall(data)
