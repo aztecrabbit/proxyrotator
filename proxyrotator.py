@@ -165,27 +165,3 @@ class proxyrotator_handler(socketserver.StreamRequestHandler):
             self.server.close_request(self.request)
             socket_server.close()
         except: pass
-
-'''
-class proxyrotator(threading.Thread):
-    def __init__(self, proxy_rotator_host_port, buffer_size = 32768):
-        super(proxyrotator, self).__init__()
-
-        self.proxy_rotator_host = str(proxy_rotator_host_port[0])
-        self.proxy_rotator_port = int(proxy_rotator_host_port[1])
-        self.buffer_size = buffer_size
-
-    def log(self, value, color='[G1]'):
-        log(value, color=color)
-
-    def run(self):
-        try:
-            server = proxyrotator_server((self.proxy_rotator_host, self.proxy_rotator_port), proxyrotator_handler)
-            server.socks_version = 5
-            server.buffer_size = self.buffer_size
-            server.username = 'aztecrabbit'
-            server.password = 'aztecrabbit'
-            server.serve_forever()
-        except OSError:
-            self.log('Port {} used by another programs'.format(self.proxy_rotator_port), color='[R1]')
-'''
