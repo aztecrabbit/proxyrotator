@@ -5,10 +5,10 @@ import struct
 import requests
 import socketserver
 
-class proxyrotator(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
-    stopped = False
+class proxyrotator(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
+    stopped = False
 
     def serve_forever(self):
         while not self.stopped:
@@ -20,12 +20,13 @@ class proxyrotator(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def stop(self):
         try:
             self.server_close()
-            self.stopped == True
-            requests.head('http://127.0.0.1', proxies={'http': 'socks5://aztecrabbit:aztecrabbit@{}:{}'.format(*self.server_address)}, timeout=1)
-        except requests.exceptions.ConnectTimeout:
+            self.stopped = True
+            requests.head(
+                url='http://127.0.0.1',
+                proxies={'http': 'socks5://aztecrabbit:aztecrabbit@{}:{}'.format(*self.server_address)}, timeout=1)
+        except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout):
             pass
-        except requests.exceptions.ConnectionError:
-            pass
+
 
 class proxyrotator_handler(socketserver.StreamRequestHandler):
 
@@ -48,7 +49,8 @@ class proxyrotator_handler(socketserver.StreamRequestHandler):
 
             password_len = ord(self.connection.recv(1))
             password = self.connection.recv(password_len).decode('charmap')
-        except: return
+        except Exception:
+            return
 
         if username == self.server.username and password == self.server.password:
             self.connection.sendall(struct.pack('!BB', version, 0))
@@ -65,20 +67,24 @@ class proxyrotator_handler(socketserver.StreamRequestHandler):
         while True:
             timeout += 1
             socket_io, _, errors = select.select(sockets, [], sockets, 3)
-            if errors: break
+            if errors:
+                break
             if socket_io:
                 for sock in socket_io:
                     try:
                         data = sock.recv(self.server.buffer_size)
-                        if not data: break
+                        if not data:
+                            break
                         # SENT -> RECEIVE
                         elif sock is self.request:
                             self.socket_server.sendall(data)
                         elif sock is self.socket_server:
                             self.request.sendall(data)
                         timeout = 0
-                    except: break
-            if timeout == 10: break
+                    except Exception:
+                        break
+            if timeout == 10:
+                break
 
     def handle(self):
         try:
@@ -101,11 +107,11 @@ class proxyrotator_handler(socketserver.StreamRequestHandler):
 
         # send server choice
         self.connection.sendall(struct.pack('!BB', self.server.socks_version, 2))
-        
+
         result = self.authentication()
-        
+
         if not result:
-            if result == False:
+            if result is False:
                 self.log('Authentication failed', color='[R1]')
                 self.connection.sendall(struct.pack('!BB', self.server.socks_version, 0xFF))
             self.server.close_request(self.request)
@@ -154,14 +160,16 @@ class proxyrotator_handler(socketserver.StreamRequestHandler):
                 pass
             except IndexError:
                 break
-            else: break
+            else:
+                break
 
         self.connection.sendall(data)
 
         if data[1] == 0 and cmd == 1:
             self.handler()
-        
+
         try:
             self.server.close_request(self.request)
-            socket_server.close()
-        except: pass
+            self.socket_server.close()
+        except Exception:
+            pass
