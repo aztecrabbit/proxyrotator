@@ -8,10 +8,10 @@ import socketserver
 
 class proxyrotator(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
-    stopped = False
+    loop = True
 
     def serve_forever(self):
-        while not self.stopped:
+        while self.loop:
             try:
                 self.handle_request()
             except ValueError:
@@ -19,13 +19,14 @@ class proxyrotator(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
     def stop(self):
         try:
-            self.server_close()
-            self.stopped = True
+            self.loop = False
             requests.head(
                 url='http://127.0.0.1',
                 proxies={'http': 'socks5://aztecrabbit:aztecrabbit@{}:{}'.format(*self.server_address)}, timeout=1)
         except (requests.exceptions.ConnectionError, requests.exceptions.ConnectTimeout):
             pass
+        finally:
+            self.server_close()
 
 
 class proxyrotator_handler(socketserver.StreamRequestHandler):
